@@ -18,6 +18,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 //mysql config
@@ -176,6 +177,38 @@ type Adt struct {
 	Channel  int
 	Imei     string
 }
+
+
+var session *mgo.Session
+
+func GetSession() *mgo.Session {
+	if session == nil {
+		var err error
+		session, err = mgo.DialWithInfo(&mgo.DialInfo{
+			Addrs:    []string{MongodbConf.Host},
+			Username: MongodbConf.User,
+			Password: MongodbConf.PassWord,
+			Timeout:  60 * time.Second,
+		})
+		if err != nil {
+			log.Fatalf("[GetSession]: %s\n", err)
+		}
+	}
+	return session
+}
+func createDbSession() {
+	var err error
+	session, err = mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{MongodbConf.Host},
+		Username: MongodbConf.User,
+		Password: MongodbConf.PassWord,
+		Timeout:  60 * time.Second,
+	})
+	if err != nil {
+		log.Fatalf("[createDbSession]: %s\n", err)
+	}
+}
+
 
 //初始化mongodb
 func initMongo() {
