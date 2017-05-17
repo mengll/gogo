@@ -184,7 +184,7 @@ func initMongo() {
 	if err != nil {
 		panic(err)
 	}
-	defer session.Close()
+	//defer session.Close()
 
 	// Optional. Switch the session to a monotonic behavior.
 	result := Adt{}
