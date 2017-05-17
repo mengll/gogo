@@ -1,0 +1,26 @@
+{
+	"mysql":{
+		"host":"192.168.1.241",
+		"user":"root",
+		"password":"anfeng@123tesT987,",
+		"port":"44173",
+		"database":"anfanapi"
+	},
+	
+	"redis":{
+		"host":"106.75.146.174",
+		"user":"",
+		"password":"",
+		"port":"4077",
+		"database":"channel"
+	},
+	
+	"mongodb":{
+		"host":"106.75.146.174",
+		"user":"",
+		"password":"",
+		"port":"4077",
+		"database":"channel" 
+	}
+}
+	

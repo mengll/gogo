@@ -1,0 +1,298 @@
+syntax = "proto3";
+package toutiao_ssp.api;
+enum AdType {
+    TOUTIAO_ADTYPE_UNDEFINED = 0; // 690 * 286
+    TOUTIAO_FEED_LP_LARGE = 1; // 690 * 286
+    TOUTIAO_FEED_LP_SMALL = 2; // 228 * 150
+
+    TOUTIAO_FEED_APP_LARGE = 4; // 690 * 286
+    TOUTIAO_FEED_APP_SMALL = 3; // 228 * 228
+
+    TOUTIAO_DETAIL_LP_GRAPHIC = 5; // 100 * 100 已不支持
+    TOUTIAO_DETAIL_LP_BANNER = 6;  // 690 * 238
+
+    TUANZI_FEED_APP = 7; // 600 * 400
+    TOUTIAO_DETAIL_APP_BANNER = 9; // 428 * 238
+    TOUTIAO_DETAIL_LP_TEXT_IMAGE = 10; // 690 * 238
+    TOUTIAO_FEED_LP_GROUP = 11; //组图 228 * 150
+    TOUTIAO_VIDEO_PATCH = 12; // 视频贴片广告 720p以上。视频比例16:9
+    NETWORK_SPLASH = 13; //开屏广告 1080x1920,1242x1863,1200x1600,1280x1530,1280x755
+
+    TOUTIAO_SPLASH = 14; //头条开屏广告 640*920 640*760 480*640 1242*1786
+
+    DUANZI_FEED_LP_LARGE = 15;  //段子推荐流-大图落地页，新样式690*286, 旧样式600*400
+    DUANZI_FEED_LP_SMALL = 16;  //段子推荐流-小图落地页，228*150
+    DUANZI_FEED_LP_GROUP = 17;  //段子推荐流-组图落地页，228*150,3张且有序
+    TOUTIAO_FEED_APP_GROUP = 18;  //头条推荐流应用组图
+    TOUTIAO_RECOMMEND_LP_SMALL = 19;  //头条视频相关推荐小图落地页
+};
+
+
+message Pmp {
+    message Deal {
+        uint32 id = 1;    // 私有交易id， 由exchange分配
+        uint32 bid_floor = 2;  // 此次展示竞价底价 (如果是pmp以这里的底价为主)
+        repeated string wseat = 3;      // 允许参与交易的广告主白名单
+        repeated string wadomain = 4;   // 允许参与竞价的广告主域名列表
+        uint32 at = 5;         // 1 表示first price, 2 表示Second price, 3 忽略底价
+    }
+
+    uint32 private_auction = 1; // 1 表示私有交易， 0 表示公有交易
+    repeated Deal deals = 2;             // 交易列表
+}
+
+
+message AdSlot {
+    enum Position {
+        UNDEFINED = 0;
+        SPLASH = 1;
+        FEED = 2;
+        DETAIL = 4;
+        RECOMMEND = 8;
+    };
+
+    message Banner {
+        uint32 width = 1;
+        uint32 height = 2;
+        Position pos = 3;
+        string sequence = 4;
+    };
+    string id = 1;         // 广告位id，头条app时，id随机生成，无实际意义；段子app时，id代表广告位在第几位
+    repeated Banner banner = 2;     // 广告位空间描述
+    repeated AdType ad_type = 3;    // 可接收的广告类型
+    uint32 bid_floor = 4;  // 单位为分
+    Pmp pmp = 5;
+    uint32 patch_video_length = 6;  //贴片广告允许的最长时间
+    string patch_video_title  = 7;  //贴片广告载体视频的title
+    uint64 channel_id = 8;          //feed流的频道
+    uint64 timestamp = 9;           //头条开屏广告的时间戳
+    repeated string keywords = 10;           //详情页关键字
+};
+
+message Publisher {
+    string id = 1;
+    string name = 2;
+    string cat = 3;
+    string domain = 4;
+};
+
+message Content {
+    message Producer {
+        string id = 1;
+        string name = 2;
+        string cat = 3;
+        string domain = 4;
+    };
+
+    string id = 1;
+    string title = 2;
+    string series = 3;
+    string url = 4;
+    string keywords = 5;
+    string contentrating = 6;
+    string userrating = 7;
+    string context = 8;
+    Producer producer = 9;
+    string language = 10;
+};
+
+message App {
+    string id = 1; // [default='11'];
+    string name = 2;
+    string domain = 3;
+    string ver = 4;
+    string bundle = 5;
+    uint32 privacypolicy = 6;
+    uint32 paid = 7;
+    Publisher publisher = 8;
+    Content content = 9;
+    string keywords = 10;
+};
+
+message Geo {
+    double lat = 1;
+    double lon = 2;
+    string country = 3;
+    string region = 4;   // 谈判待定
+    string city = 5;
+    string type = 6;
+};
+
+message Device {
+    enum ConnectionType {
+        CONNECTIONTYPE_UNDEFINED = 0;
+        Honeycomb = 1;  // 3G网
+        WIFI = 2;
+        UNKNOWN = 3;
+        NT_2G = 4;      //2G网
+        NT_4G = 5;      //4G网
+    };
+    enum DeviceType {
+        DEVICETYPE_UNDEFINED = 0;
+        PHONE = 1;
+        TABLET = 2;
+    };
+
+    bool dnt = 1;              // 是否允许追踪  待定
+    string ua = 2;             // 待定 浏览器
+    string ip = 3;             //
+    Geo geo = 4;
+    string device_id = 5;
+    string device_id_md5 = 6;
+    string carrier = 7;
+    string language = 8;
+    string make = 9;           // 制造商
+    string model = 10;         // 型号
+    string os = 11;            // ios or android
+    string osv = 12;
+    bool js = 13;              // js support
+    ConnectionType connection_type = 14;
+    DeviceType device_type = 15;
+    string android_id = 16;    //对于android手机传输android_id
+};
+
+message Data {
+    message Segment {
+        string id = 1;     // segment 编码id, 具体的映射表线下提供
+        string name = 2;   // 暂时为空
+        string value = 3;  // 暂时为空
+    };
+    string id = 1;        // 数据分类id
+    string name = 2;      // 数据分类名字
+    repeated Segment segment = 3;
+};
+
+message User {
+    enum Gender {
+        GENDER_UNDEFINED = 0 ;
+        MALE = 1;
+        FEMALE = 2;
+        UNKNOWN = 3;
+    };
+    string id = 1;
+    string buyer_id = 2;
+    string yob = 3;        // 年龄
+    Gender gender = 4;     // 用户性别
+    string keywords = 5;   // 兴趣关键词(utf-8), 以逗号分隔
+    Geo geo = 6;           // 地理位置
+    repeated Data data = 7;         // 额外的用户信息
+};
+
+message PrivateReq {
+    message MaterialInfo
+    {
+        /* 请求素材id */
+        string ad_id = 1;
+        /* 请求广告主id */
+        string advertiser_id = 2;
+    }
+    repeated MaterialInfo materials = 1;
+    /* 京东地域汉字 */
+    string area_cn_name = 2;
+    /* 京东地域id */
+    string area_id = 3;
+}
+
+message BidRequest {
+    enum BidReqType {
+        BIDREQTYPE_UNDEFINED = 0;
+        ONLY_RETARGET = 1;
+        ONLY_DSP = 2;
+        RETARGET_AND_DSP = 3;
+    }
+    string request_id = 1;
+    string api_version = 2;  // 接口版本
+    repeated AdSlot adslots = 3;
+    App app = 4;
+    Device device = 5;
+    User user = 6;
+    BidReqType bid_req_type = 7 ;//[default=ONLY_DSP];//请求广告模式
+    PrivateReq preq = 8;
+};
+
+message MaterialMeta {
+    message ImageMeta {
+        string description = 1;  // 应用下载额外的描述
+        uint32 width = 2;        // 大图小图的问题
+        uint32 height = 3;
+        string url = 4;          // 图片的外链, 常用格式
+        repeated string urls = 5;         //组图的外链，三个url
+        uint64 date_timestamp = 6;          //头条开屏广告投放的日期时间
+        uint64 start_timestamp = 7;        //头条开屏广告投放的生效时间
+        uint64 end_timestamp = 8;        //头条开屏广告投放的失效时间
+
+    };
+
+    message ExternalMeta {
+        string url = 1;
+    };
+
+    message AndroidApp {
+        string app_name = 1;
+        string download_url = 2;
+        string open_url = 3;      // 安装之后打开应用的url
+        string package = 4;
+        string web_url = 5;
+    };
+
+    message IosApp {
+        string app_name = 1;
+        string download_url = 2;
+        string open_url = 3;
+        string appleid = 4;
+        string ipa_url = 5;      // 越狱链接
+    };
+
+    AdType ad_type = 1;
+    string nurl = 2;             // winnotice url
+    string title = 3;            // 除detail_banner之外必须
+    string source = 4;           // 来源, 默认dsp名
+    ImageMeta image_banner = 5;
+    ExternalMeta external = 6;   // 对于落地页广告才有
+    AndroidApp android_app = 7;  // android应用下载才有
+    IosApp ios_app = 8;          // ios应用下载才有
+    repeated string show_url = 9;         // 展现监测
+    repeated string click_url = 10;       // 点击监测
+    bool is_inapp = 11;          // is_inapp=true以原生态打开
+    string ext = 12;             // 点击展示监测扩展字段
+    string lp_open_url = 13;     //落地页广告调起链接,落地页广告需要的时候才进行填写
+    repeated string video_play_start = 14; // 视频开始播放监测url
+    repeated string video_play_finish = 15; // 视频播放完成监测url
+    string source_avatar = 16;     //广告来源头像
+    repeated  ImageMeta splash_creatives = 17;     //针对的是头条开屏素材
+};
+
+message Bid {
+    enum BidAdType {
+        BIDADTYPE_UNDEFINED= 0;
+        RETARGET_AD = 1;//重定向广告，Adx负责对广告做ranking，比如：直投类型
+        DSP_AD = 2;//DSP广告
+    }
+    string id = 1;
+    string adslot_id = 2;
+    uint32 price = 3;           // 单位为分
+    uint64 adid = 4;            // 创意id
+    MaterialMeta creative = 5;  // 素材
+    string dealid = 6;          // 如果是pmp需返回dealid字段
+    string cid = 7;             // 扩展id, 必须由数字组成的字符串，长度小于39位，选填，如果此字段有效则使用cid而不是adid, 如果可以通过adid(uint64)表示的建议使用adid
+    BidAdType bid_ad_type = 8; //[default=DSP_AD];
+    double quality = 9;         // 直投用quality
+    double ctr = 10;         // 直投需要传预估ctr
+};
+
+message SeatBid {
+    repeated Bid ads = 1;
+    string seat = 2;  // 广告来源dsp识别
+};
+
+message BidResponse {
+    string request_id = 1;
+    repeated SeatBid seatbids = 2;
+    uint64 error_code = 3;  // 请求出错时的错误码，用于问题排查
+};
+
+message DspClickNotification {
+    uint64 dspid = 1;
+    string click_uuid = 2;   // 经落地页url宏替换传递
+    uint32 price = 3;        // 竞标二价，经落地页url宏替换传递
+}
