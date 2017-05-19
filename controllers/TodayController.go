@@ -137,19 +137,28 @@ func ClickNotify(w http.ResponseWriter, r *http.Request, psa httprouter.Params) 
 //bidrequest
 
 func BidRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	//get The post data
-	postForm := r.PostForm
-	//	dat := postForm.Get("")
-	//	if err != nil {
-	//		fmt.Println(err)
-	//	}
+     defer func() {
+                if err := recover(); err != nil {
+                        fmt.Println("出错了")
+                }
 
-	//	req := &models.BidRequest{}
-	//	era := proto.Unmarshal(dat, req)
-	//	if era != nil {
-	//		fmt.Println("转化错误")
-	//	}
-	Log.Info(postForm)
+        }()
+
+        dasa, _ := httputil.DumpRequest(r, true)
+        fmt.Println(r.Body)
+        fmt.Println(string(dasa))
+        fmt.Println("--=====----")
+
+                bydata ,_ :=ioutil.ReadAll(r.Body)
+
+
+        reqa := &models.BidRequest{}
+        era := proto.Unmarshal(bydata, reqa)
+        if era != nil {
+                        fmt.Println("转化错误iiiii")
+        }
+        fmt.Println(reqa)
+
 
 	backData := TuiHead()
 
