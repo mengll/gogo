@@ -170,3 +170,84 @@ func BidRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 
 }
+
+//这是响应今日头条的第一次请求的的调用的方法
+
+
+func BbqRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("出错了")
+		}
+
+	}()
+
+	httputil.DumpRequest(r, true)
+
+	bydata, _ := ioutil.ReadAll(r.Body)
+
+	reqa := &models.BidRequest{}
+	era := proto.Unmarshal(bydata, reqa)
+	if era != nil {
+		fmt.Println("转化错误iiiii")
+		panic("解析错误")
+	}
+
+	//响应的对象的数据
+	rback := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	adslots := reqa.GetAdslots()[0] //获取最上曾数据
+	biddata := &models.Bid{}
+	biddata.Id = strconv.Itoa(rback.Intn(20)) //生成唯一的商品的信息
+	biddata.Adid = uint64(rback.Intn(18))
+	biddata.Price = adslots.BidFloor + 1
+	biddata.AdslotId = adslots.Id
+	biddata.Cid = strconv.Itoa(rback.Intn(18))
+
+	modelste := &models.MaterialMeta{}
+	modelste.AdType = models.AdType_TOUTIAO_FEED_LP_GROUP
+	modelste.Nurl = "http://jrtt.qcwanwan.com/win/notify?user_id={user_id}&request_id={request_id}&adid={adid}&bid_price={bid_price}&ip={ip}&timestamp={timestamp}&did={did}"
+	modelste.Title = "白野猪爆了个装备.换了小半个月工资NB"
+	modelste.Source = "传奇无双"
+
+	//banner的图片信息显示
+	imgbanner := &models.MaterialMeta_ImageMeta{}
+	imgbanner.Width = 228
+	imgbanner.Height = 150
+	imgbanner.Url = "http://jrtt.qcwanwan.com/1.jpg"
+	imgbanner.Urls = []string{"http://jrtt.qcwanwan.com/1.jpg",
+		"http://jrtt.qcwanwan.com/2.jpg",
+		"http://jrtt.qcwanwan.com/3.jpg"}
+	modelste.ImageBanner = imgbanner
+
+	//设置当前的操作流程
+	dsp_external := &models.MaterialMeta_ExternalMeta{}
+	dsp_external.Url = "http://m.anfeng.cn/cqws_bbk-ios/12/"
+	modelste.External = dsp_external
+	biddata.Creative = modelste
+
+	modelste.ShowUrl = []string{"http://jrtt.qcwanwan.com/show/notify?user_id={user_id}&request_id={request_id}&adid={adid}&bid_price={bid_price}&ip={ip}&timestamp={timestamp}&did={did}"}
+
+	modelste.ClickUrl = []string{"http://jrtt.qcwanwan.com/click/notify?user_id={user_id}&request_id={request_id}&adid={adid}&bid_price={bid_price}&ip={ip}&timestamp={timestamp}&did={did}"}
+
+	dsp := &models.SeatBid{}
+	dsp.Ads = []*models.Bid{biddata}
+
+	res := &models.BidResponse{}
+	res.Seatbids = []*models.SeatBid{dsp}
+	res.RequestId = reqa.RequestId
+
+	data, err := proto.Marshal(res)
+	w.Write(data)
+
+	newTest := &models.BidResponse{}
+	err = proto.Unmarshal(data, newTest)
+	if err != nil {
+		fmt.Println("----->>>")
+	}
+	fmt.Println(newTest)
+
+}
+
+
