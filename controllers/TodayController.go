@@ -6,6 +6,22 @@ import (
 
 	"net/http"
 
+	"io/ioutil"
+	"math/rand"
+	"net/http/httputil"
+
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
+	"net/url"
+	"strconv"
+	"time"
+
+	"github.com/golang/protobuf/proto"
+
+	"encoding/json"
+	"unicode/utf8"
+
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -59,18 +75,8 @@ func RequestToday(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 
 }
 
-//获胜后获取的数据
+func saveData(collectionName string, ps url.Values) {
 
-func WinRequest(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println("There had some ER")
-			fmt.Println(err)
-		}
-	}()
-	ps := r.URL.Query()
-	//fmt.Println("dsa", r.URL.Query().Get("adid"))
-	//models.MongoDb.C("dsp_win").Insert(r.Header)
 	dat := NotifyDat{}
 	dat.Adid = ps.Get("adid")
 	dat.BidPrce = Decprice(ps.Get("bid_price"))
@@ -81,7 +87,19 @@ func WinRequest(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {
 	dat.UserId = ps.Get("user_id")
 	fmt.Println(dat)
 	models.MongoDb.C("win_Notify").Insert(dat)
+}
 
+//获胜后获取的数据
+
+func WinRequest(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("There had some ER")
+			fmt.Println(err)
+		}
+	}()
+	ps := r.URL.Query()
+	saveData("win_Notify", ps)
 }
 
 //展示的时候请求的数据
@@ -94,18 +112,7 @@ func ShowNotify(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {
 		}
 	}()
 	ps := r.URL.Query()
-	//fmt.Println("dsa", r.URL.Query().Get("adid"))
-	//models.MongoDb.C("dsp_win").Insert(r.Header)
-	dat := NotifyDat{}
-	dat.Adid = ps.Get("adid")
-	dat.BidPrce = Decprice(ps.Get("bid_price"))
-	dat.Did = ps.Get("did")
-	dat.Ip = ps.Get("ip")
-	dat.RequestID = ps.Get("request_id")
-	dat.TimesTamp = ps.Get("timestamp")
-	dat.UserId = ps.Get("user_id")
-	fmt.Println(dat)
-	models.MongoDb.C("show_Notify").Insert(dat)
+	saveData("show_Notify", ps)
 
 }
 
@@ -119,60 +126,186 @@ func ClickNotify(w http.ResponseWriter, r *http.Request, psa httprouter.Params) 
 		}
 	}()
 	ps := r.URL.Query()
-	//fmt.Println("dsa", r.URL.Query().Get("adid"))
-	//models.MongoDb.C("dsp_win").Insert(r.Header)
-	dat := NotifyDat{}
-	dat.Adid = ps.Get("adid")
-	dat.BidPrce = Decprice(ps.Get("bid_price"))
-	dat.Did = ps.Get("did")
-	dat.Ip = ps.Get("ip")
-	dat.RequestID = ps.Get("request_id")
-	dat.TimesTamp = ps.Get("timestamp")
-	dat.UserId = ps.Get("user_id")
-	fmt.Println(dat)
-	models.MongoDb.C("click_Notify").Insert(dat)
-
+	saveData("click_Notify", ps)
 }
 
-//bidrequest
+const (
+	TJ_FEED_DSP_ID  string = "1756165498"
+	TJ_FEED_DSP_KEY string = "a74e696576394976bc694fbd58a2b0d6"
+	XQ_FEED_DSP_ID  string = "1756165504"
+	XQ_FEED_DSP_KEY string = "c8c2df73229b47378f8eceb9cc12ea1a"
+	DZ_FEED_DSP_ID  string = "1756165502"
+	DZ_FEED_DSP_KEY string = "f49916e2447f490d93822dff5c345aa3"
+)
 
-func BidRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-     defer func() {
-                if err := recover(); err != nil {
-                        fmt.Println("出错了")
-                }
+type QueryCreatives struct {
+	dspid     string
+	dspkey    string
+	startDate string
+	endDate   string
+	timestamp string
+}
 
-        }()
+//send request dat
 
-        dasa, _ := httputil.DumpRequest(r, true)
-        fmt.Println(r.Body)
-        fmt.Println(string(dasa))
-        fmt.Println("--=====----")
+func init() {
+	fmt.Println("1")
+	//nowTime := time.Now()
 
-                bydata ,_ :=ioutil.ReadAll(r.Body)
+	mm := map[string]string{"dspid": TJ_FEED_DSP_ID, "dspkey": TJ_FEED_DSP_KEY, "timestamp": strconv.FormatInt(time.Now().Unix(), 10), "startdate": "2017-05-12", "enddate": "2017-05-14"}
+	QueryTtNum(mm)
+}
 
+var Qudat map[string]string
 
-        reqa := &models.BidRequest{}
-        era := proto.Unmarshal(bydata, reqa)
-        if era != nil {
-                        fmt.Println("转化错误iiiii")
-        }
-        fmt.Println(reqa)
+//get the data
+func QueryTtNum(qudat map[string]string) {
 
-
-	backData := TuiHead()
-
-	//r.Response.Status = "200"
-	//r.Response.Write(w)
-	_, erro := fmt.Println(backData)
-	if erro != nil {
-		fmt.Println("This is go function")
+	var str string
+	for k, v := range qudat {
+		if k != "dspkey" {
+			str += fmt.Sprintf("%s=%s&", k, v)
+		}
 	}
+	tdt := time.Now().Unix()
+	fmt.Println(tdt)
+	//str = fmt.Sprintf("dspid=%s&timestamp=%s&startdate=%s&enddate=%s", qudat["dspid"], tdt, qudat["startdate"], qudat["enddate"])
+	var urls string = fmt.Sprintf("http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?%s", str)
+	//var urls = "http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?dspid=1756165498&timestamp=1495459053&startdate=2017-04-01&enddate=2017-04-27"
+	stra := CreatSign(qudat["dspkey"], urls)
+
+	urls = urls + "&signature=" + stra
+	fmt.Println(urls)
+	httpGet(urls)
+}
+
+func httpGet(urls string) {
+	resp, err := http.Get(urls)
+	if err != nil {
+		// handle error
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		// handle error
+	}
+
+	fmt.Println(string(body))
+
+	dat := models.DataChange(string(body))
+	dda := dat["result"]
+
+	var hj string = dda.(string)
+	bba := []byte(hj)
+	//TtDecodecode(hj)
+	aesEnc := AesEncrypt{}
+	rs, _ := aesEnc.Decrypt(bba)
+	fmt.Println(rs)
+	var ddm interface{}
+	json.Unmarshal(rs, ddm)
+	fmt.Println(ddm)
+
+	//bf := bytes.NewBuffer(rs)
+	//ss := bf.String()
+	fmt.Println(rs)
+	fmt.Println("----------------------------")
+	rr, siz := utf8.DecodeLastRune(rs)
+	fmt.Println(string(rr), siz)
+}
+
+func (this *AesEncrypt) getKey() []byte {
+	strKey := "a74e696576394976bc694fbd58a2b0d6"
+	keyLen := len(strKey)
+	fmt.Println(keyLen)
+	if keyLen < 16 {
+		panic("res key 长度不能小于16")
+	}
+	arrKey := []byte(strKey)
+	if keyLen >= 32 {
+		//取前32个字节
+		return arrKey[:32]
+	}
+	if keyLen >= 24 {
+		//取前24个字节
+		return arrKey[:24]
+	}
+	//取前16个字节
+	return arrKey[:16]
+}
+
+type AesEncrypt struct {
+}
+
+//加密字符串
+func (this *AesEncrypt) Encrypt(strMesg string) ([]byte, error) {
+	key := this.getKey()
+	var iv = []byte(key)[:aes.BlockSize]
+	encrypted := make([]byte, len(strMesg))
+	aesBlockEncrypter, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	aesEncrypter := cipher.NewCFBEncrypter(aesBlockEncrypter, iv)
+	aesEncrypter.XORKeyStream(encrypted, []byte(strMesg))
+	return encrypted, nil
+}
+
+//解密字符串
+func (this *AesEncrypt) Decrypt(src []byte) (strDesc []byte, err error) {
+	defer func() {
+		//错误处理
+		if e := recover(); e != nil {
+			err = e.(error)
+		}
+	}()
+	key := this.getKey()
+	var iv = []byte(key)[:aes.BlockSize]
+	decrypted := make([]byte, len(src))
+	var aesBlockDecrypter cipher.Block
+	aesBlockDecrypter, err = aes.NewCipher([]byte(key))
+	if err != nil {
+		return []byte{}, err
+	}
+	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
+	aesDecrypter.XORKeyStream(decrypted, src)
+	return decrypted, nil
+}
+
+//decode data
+
+func TtDecodecode(dt string) {
+
+	data, err := base64.RawURLEncoding.DecodeString(dt)
+	if err != nil {
+	}
+
+	iv := data[0:16]
+	//dat := data[16:]
+
+	keys := []byte(TJ_FEED_DSP_KEY)
+
+	decrypted := make([]byte, len(data))
+	var aesBlockDecrypter cipher.Block
+	aesBlockDecrypter, err = aes.NewCipher(keys)
+	if err != nil {
+
+	}
+	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
+	aesDecrypter.XORKeyStream(decrypted, data)
+
+	fmt.Println(decrypted)
+
+	//	fmt.Println(keys)
+	//	asa, _ := aes.NewCipher(keys)
+	//	aas := cipher.NewCFBEncrypter(asa, iv)
+	//	aas.XORKeyStream()
+	//	fmt.Println(aas)
+	//	fmt.Println(dat, iv)
 
 }
 
 //这是响应今日头条的第一次请求的的调用的方法
-
 
 func BbqRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
@@ -249,5 +382,3 @@ func BbqRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	fmt.Println(newTest)
 
 }
-
-

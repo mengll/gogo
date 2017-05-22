@@ -78,7 +78,7 @@ func TuiHead() []byte {
 	biddata.Adid = 2323423423
 
 	modelste := &models.MaterialMeta{}
-	modelste.AdType = 11
+	modelste.AdType = models.AdType_TOUTIAO_FEED_LP_GROUP
 	modelste.Nurl = ""
 	modelste.Title = "怕冷的姑娘一定要看"
 	modelste.Source = "阿里妈妈"

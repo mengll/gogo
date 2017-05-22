@@ -14,7 +14,7 @@ func main() {
 	router := httprouter.New()
 	router.GET("/", controllers.Index) //
 
-	router.GET("/bit/req", controllers.RequestToday)
+	router.POST("/bit/req", controllers.RequestToday)
 	router.GET("/win/notify", controllers.WinRequest)
 
 	http.ListenAndServe(":9090", router)
