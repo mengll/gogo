@@ -80,36 +80,74 @@ type TTnodat struct {
 //    }
 //}
 
-//func TTquery(bid *jrtt.BidRequest) {
-//	db := GetMysqlDb()
+func TTquery(bid *BidRequest) {
+	//db := GetMysqlDb()
 
-//	data, err := db.Query("")
-//	if err {
-//	}
+	//	data, err := db.Query("")
+	//	if err {
+	//	}
 
-//	for k, v := range data {
-//		fmt.Println(k, v)
-//	}
+	//	for k, v := range data {
+	//		fmt.Println(k, v)
+	//	}
+	fmt.Println("--<<><><>")
+	ads := bid.GetAdslots()
+	fmt.Println(ads)
+	fmt.Println("<<<--->><")
 
-//}
+	//get the device
+	device := bid.GetDevice()
+	device_geo := device.GetGeo()
+	city := device_geo.GetCity()
+	fmt.Println(city)
 
-type TTPlan struct {
-}
-
-func TTinit() {
 	db := GetMysqlDb()
-	sql := "select * from tf_plan where is_off = 0"
-	dat, err := db.Query(sql)
+	sql := fmt.Sprintf("select * from tf_plan where is_off = 0 and address regexp %q", city)
+	fmt.Println(sql)
+	dat, _ := db.Query(sql)
 	fmt.Println(dat)
-	fmt.Println("\r\n------")
-	fmt.Println(err)
 
 }
 
 //input Data
 
-//func TTinputData(bid *jrtt.BidRequest) {
-//	dat := TTnodat{}
-//	dat.data = bid.String()
-//	MongoDb.C("bid_request_dat").Insert(dat)
-//}
+func TTinputData(bid *BidRequest) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("This is the best you config!")
+		}
+	}()
+
+	indat := make(map[string]interface{})
+	indat["deviceid"] = bid.Device.DeviceId
+	indat["os"] = bid.Device.Os
+	indat["osv"] = bid.Device.Osv
+	indat["carrier"] = bid.Device.Carrier
+	indat["devicetype"] = bid.Device.DeviceType
+	indat["model"] = bid.Device.Model
+	indat["ip"] = bid.Device.Ip
+	indat["requestid"] = bid.RequestId
+	indat["city"] = bid.Device.Geo.City
+	indat["Country"] = bid.Device.Geo.Country
+	indat["lat"] = bid.Device.Geo.Lat
+	indat["lon"] = bid.Device.Geo.Lon
+	indat["region"] = bid.Device.Geo.Region
+
+	indat["gender"] = bid.User.Gender
+	indat["keywords"] = bid.User.Keywords
+	indat["yob"] = bid.User.Yob
+
+	adslosts := bid.GetAdslots()
+	adsdat := []string{}
+
+	for _, v := range adslosts {
+		adsdat = append(adsdat, v.String())
+	}
+
+	indat["adslots"] = adsdat
+	mongo := GetMongoSession().Copy()
+	defer mongo.Close()
+	mongo.DB("channel").C("bid_request_dat").Insert(&indat)
+
+}

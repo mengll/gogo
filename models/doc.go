@@ -49,7 +49,7 @@ func init() {
 	//initMysql()    //初始化mysql
 	//initMongo() //初始化mongo
 	//MongoTest()
-	TTinit()
+	//TTinit()
 }
 
 /*
