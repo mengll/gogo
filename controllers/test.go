@@ -97,7 +97,19 @@ func CreatSign(key, url string) string {
 	e_keya_d := hmac.New(sha1.New, e_keya)
 	e_keya_d.Write(urls)
 	e_keya_end := e_keya_d.Sum(nil)
-	return base64.StdEncoding.EncodeToString(e_keya_end)
+	aa := base64.URLEncoding.EncodeToString(e_keya_end)
+
+	return aa
+
+	signature := base64.RawURLEncoding.EncodeToString(e_keya_end)
+
+	for {
+		if len(signature)%4 == 0 {
+			break
+		}
+		signature += "="
+	}
+	return signature
 }
 
 //金额加密

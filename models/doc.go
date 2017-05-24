@@ -49,6 +49,7 @@ func init() {
 	//initMysql()    //初始化mysql
 	//initMongo() //初始化mongo
 	//MongoTest()
+	TTinit()
 }
 
 /*
@@ -83,6 +84,7 @@ func initDatabase() {
 	}
 
 	dt := DataChange(string(dat))
+	fmt.Println(dt["mysql"])
 	//mysql
 	dta := dt["mysql"]
 	dap := DataChange(JsonEncodeString(dta))

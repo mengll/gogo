@@ -1,5 +1,5 @@
 {
-	"mysql":{
+	"mysql_new":{
 		"host":"192.168.1.241",
 		"user":"root",
 		"password":"anfeng@123tesT987,",
@@ -7,6 +7,14 @@
 		"database":"anfanapi"
 	},
 	
+	"mysql":{
+		"host":"192.168.1.246",
+		"user":"root",
+		"password":"123456",
+		"port":"3306",
+		"database":"toufang"
+	},
+
 	"redis":{
 		"host":"106.75.146.174",
 		"user":"",

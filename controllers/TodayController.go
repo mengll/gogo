@@ -17,10 +17,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-
 	"encoding/json"
-	"unicode/utf8"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -89,7 +88,7 @@ func saveData(collectionName string, ps url.Values) {
 	models.MongoDb.C("win_Notify").Insert(dat)
 }
 
-//获胜后获取的数据
+//获胜后获取的数据github.com/djimenez/iconv-go"
 
 func WinRequest(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {
 	defer func() {
@@ -148,11 +147,11 @@ type QueryCreatives struct {
 
 //send request dat
 
-func init() {
+func initas() {
 	fmt.Println("1")
 	//nowTime := time.Now()
 
-	mm := map[string]string{"dspid": TJ_FEED_DSP_ID, "dspkey": TJ_FEED_DSP_KEY, "timestamp": strconv.FormatInt(time.Now().Unix(), 10), "startdate": "2017-05-12", "enddate": "2017-05-14"}
+	mm := map[string]string{"dspkey": TJ_FEED_DSP_KEY, "enddate": "2017-05-14", "startdate": "2017-05-12", "timestamp": strconv.FormatInt(time.Now().Unix(), 10), "dspid": TJ_FEED_DSP_ID}
 	QueryTtNum(mm)
 }
 
@@ -167,15 +166,24 @@ func QueryTtNum(qudat map[string]string) {
 			str += fmt.Sprintf("%s=%s&", k, v)
 		}
 	}
-	tdt := time.Now().Unix()
+	tdt := strconv.FormatInt(time.Now().Unix(), 10)
 	fmt.Println(tdt)
-	//str = fmt.Sprintf("dspid=%s&timestamp=%s&startdate=%s&enddate=%s", qudat["dspid"], tdt, qudat["startdate"], qudat["enddate"])
+	str = fmt.Sprintf("dspid=%s&timestamp=%s&startdate=%s&enddate=%s&", qudat["dspid"], tdt, qudat["startdate"], qudat["enddate"])
 	var urls string = fmt.Sprintf("http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?%s", str)
-	//var urls = "http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?dspid=1756165498&timestamp=1495459053&startdate=2017-04-01&enddate=2017-04-27"
-	stra := CreatSign(qudat["dspkey"], urls)
+	uu := fmt.Sprintf("http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?dspid=%s&timestamp=%s&startdate=%s&enddate=%s", qudat["dspid"], tdt, qudat["startdate"], qudat["enddate"])
+	//var urls = "http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?dspid=1756165498&timestamp=1495459053&startdate=2017-04-01&enddate=2017-04-27&"
 
-	urls = urls + "&signature=" + stra
+	mla := "http://adx.toutiao.com/adxbuyer/api/v1.0/creatives/stat?dspid=1756165498&timestamp=1495472852&startdate=2017-05-12&enddate=2017-05-14"
+
+	fmt.Println(qudat["dspkey"])
+	stra := CreatSign(qudat["dspkey"], uu)
+
+	urls = urls + "signature=" + stra
 	fmt.Println(urls)
+
+	fmt.Println("---->><><<<")
+	kl := CreatSign(qudat["dspkey"], mla)
+	fmt.Println(kl)
 	httpGet(urls)
 }
 
@@ -192,26 +200,49 @@ func httpGet(urls string) {
 	}
 
 	fmt.Println(string(body))
-
 	dat := models.DataChange(string(body))
+	if dat["error"] != nil {
+		return
+	}
 	dda := dat["result"]
 
 	var hj string = dda.(string)
 	bba := []byte(hj)
 	//TtDecodecode(hj)
+	fmt.Println("--->>", string(bba))
 	aesEnc := AesEncrypt{}
 	rs, _ := aesEnc.Decrypt(bba)
-	fmt.Println(rs)
-	var ddm interface{}
-	json.Unmarshal(rs, ddm)
-	fmt.Println(ddm)
 
+	var mm map[string]interface{}
+	json.Unmarshal(rs, &mm)
+	fmt.Println(mm)
+	fmt.Println("-<><<<<<<<<")
+	fmt.Println(string(rs))
+
+	// {"date_stats"=>[{"click_cnt"=>0, "cost"=>0.02, "req_cnt"=>78, "date"=>"2017-04-26", "win_cnt"=>4, "bid_cnt"=>5, "show_cnt"=>7}, {"click_cnt"=>6, "cost"=>0.11, "req_cnt"=>56, "date"=>"2017-04-27", "win_cnt"=>27, "bid_cnt"=>28, "show_cnt"=>39}], "local_ads_stats"=>{"click_cnt"=>0, "bid"=>4.0, "show_cnt"=>0, "cost"=>0.0, "extra"=>{"daily_stats"=>{}}}}
 	//bf := bytes.NewBuffer(rs)
 	//ss := bf.String()
-	fmt.Println(rs)
+	var anydata QuerDat
+	json.Unmarshal(rs, &anydata)
 	fmt.Println("----------------------------")
-	rr, siz := utf8.DecodeLastRune(rs)
-	fmt.Println(string(rr), siz)
+	fmt.Println(anydata)
+
+}
+
+type TTDayValue struct {
+	ClickCnt int     `json:"click_cnt"`
+	Cost     float32 `json:"cost"`
+	ReqCnt   int32   `json:"req_cnt"`
+	Date     string  `json:"date"`
+	WinCnt   int     `json:"win_cnt"`
+	BidCnt   int     `json:"bid_cnt"`
+	ShowCnt  int     `json:"show_cnt"`
+}
+
+type QuerDat struct {
+	DateStatus    []TTDayValue
+	LocalAdsStats TTDayValue
+	Extra         map[string]interface{}
 }
 
 func (this *AesEncrypt) getKey() []byte {
@@ -260,23 +291,24 @@ func (this *AesEncrypt) Decrypt(src []byte) (strDesc []byte, err error) {
 		}
 	}()
 	key := this.getKey()
-	var iv = []byte(key)[:aes.BlockSize]
-	decrypted := make([]byte, len(src))
+	var iv = src[:aes.BlockSize]
+	clipdt := src[aes.BlockSize:]
+	//decrypted := make([]byte, len(src))
 	var aesBlockDecrypter cipher.Block
-	aesBlockDecrypter, err = aes.NewCipher([]byte(key))
+	aesBlockDecrypter, err = aes.NewCipher(key)
 	if err != nil {
 		return []byte{}, err
 	}
 	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
-	aesDecrypter.XORKeyStream(decrypted, src)
-	return decrypted, nil
+	aesDecrypter.XORKeyStream(clipdt, clipdt) //d out src input
+	return clipdt, nil
 }
 
 //decode data
 
 func TtDecodecode(dt string) {
 
-	data, err := base64.RawURLEncoding.DecodeString(dt)
+	data, err := base64.StdEncoding.DecodeString(dt)
 	if err != nil {
 	}
 
@@ -285,13 +317,15 @@ func TtDecodecode(dt string) {
 
 	keys := []byte(TJ_FEED_DSP_KEY)
 
-	decrypted := make([]byte, len(data))
+	decrypted := make([]byte, aes.BlockSize+len(data))
 	var aesBlockDecrypter cipher.Block
 	aesBlockDecrypter, err = aes.NewCipher(keys)
 	if err != nil {
 
 	}
+
 	aesDecrypter := cipher.NewCFBDecrypter(aesBlockDecrypter, iv)
+
 	aesDecrypter.XORKeyStream(decrypted, data)
 
 	fmt.Println(decrypted)
