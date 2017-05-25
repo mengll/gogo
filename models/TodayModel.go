@@ -99,7 +99,9 @@ func TTquery(bid *BidRequest) {
 	device := bid.GetDevice()
 	device_geo := device.GetGeo()
 	city := device_geo.GetCity()
+
 	fmt.Println(city)
+	fmt.Println(bid.Device.ConnectionType)
 
 	db := GetMysqlDb()
 	sql := fmt.Sprintf("select * from tf_plan where is_off = 0 and address regexp %q", city)
@@ -115,7 +117,7 @@ func TTinputData(bid *BidRequest) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Println("This is the best you config!")
+			fmt.Println("This is the best you config!") // this will be write bidrequest log
 		}
 	}()
 
@@ -149,5 +151,15 @@ func TTinputData(bid *BidRequest) {
 	mongo := GetMongoSession().Copy()
 	defer mongo.Close()
 	mongo.DB("channel").C("bid_request_dat").Insert(&indat)
+
+}
+
+//get
+func getCastmoney(planid int, paytype string, money chan int) {
+	mongo := GetMongoSession().Copy()
+	var totalMoney int //the cast is fen
+	defer mongo.Close()
+	//mongo.DB("channel").C("bid_request_dat").Insert(&indat)
+	money <- totalMoney
 
 }

@@ -206,6 +206,8 @@ func httpGet(urls string) {
 	}
 	dda := dat["result"]
 
+	//byte change to utf8
+
 	var hj string = dda.(string)
 	bba := []byte(hj)
 	//TtDecodecode(hj)

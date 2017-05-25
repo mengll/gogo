@@ -55,7 +55,7 @@ func init() {
 	}
 
 	models.TTquery(req)
-	models.TTinputData(req)
+	//models.TTinputData(req)
 
 	fmt.Println(req)
 	adts := req.GetAdslots()
