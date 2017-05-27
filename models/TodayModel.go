@@ -3,6 +3,9 @@ package models
 import (
 	//"dsp/dat/jrtt"
 	"fmt"
+	"reflect"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 type TTdata struct {
@@ -109,6 +112,9 @@ func TTquery(bid *BidRequest) {
 	dat, _ := db.Query(sql)
 	fmt.Println(dat)
 
+	//get the plan dat
+	GetPlan(bid)
+
 }
 
 //input Data
@@ -154,12 +160,79 @@ func TTinputData(bid *BidRequest) {
 
 }
 
+type Cnotify struct {
+	did   uint32
+	money int
+}
+
 //get
 func getCastmoney(planid int, paytype string, money chan int) {
 	mongo := GetMongoSession().Copy()
 	var totalMoney int //the cast is fen
 	defer mongo.Close()
 	//mongo.DB("channel").C("bid_request_dat").Insert(&indat)
+	diter := mongo.DB("channel").C("click_Notify").Find(bson.M("did", planid)).Iter()
+	rea := Cnotify{} //the cast total money
+	for diter.Next(&rea) {
+
+	}
 	money <- totalMoney
+}
+
+//get the access plan
+
+func GetPlan(bid *BidRequest) {
+	if bid == nil {
+		fmt.Println("there is empty for that !")
+		return
+	}
+	selectMap := make(map[string]interface{})
+	lk := bid.GetUser().GetGeo()
+	if lk != nil {
+		selectMap["address"] = lk.String()
+	}
+	ugender := bid.User.GetGender()
+	if ugender.String() != "" {
+		selectMap["gender"] = USER_GENDER[bid.User.Gender.String()]
+	}
+
+	if bid.Device.Os != "" {
+		selectMap["platform"] = bid.Device.Os
+	}
+
+	if bid.User.Yob != "" {
+		selectMap["yob"] = bid.User.Yob
+	}
+	selectMap["connection_type"] = NT_ENUM["NT_4G"]
+	if bid.Device.Carrier != "" {
+		selectMap["operator"] = bid.Device.Carrier
+	}
+
+	sql := "select * from tf_plan where "
+	for k, v := range selectMap {
+		ty := reflect.TypeOf(v)
+		nn := ty.Name()
+		switch nn {
+		case "string":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%q,%s)) and ", k, v, k)
+		case "int":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%d,%s)) and ", k, v, k)
+		}
+
+	}
+
+	sql += "status = 0"
+
+	db := GetMysqlDb()
+
+	db.Query(sql)
+
+	fmt.Println(sql)
 
 }
+
+var USER_GENDER map[string]int = map[string]int{"UNKNOWN": 3, "FEMALE": 1, "MALE": 2}
+
+var NT_ENUM map[string]int = map[string]int{"Honeycomb": 1, "WIFI": 2, "UNKNOWN": 3, "NT_2G": 4, "NT_4G": 5} //网络编辑
+
+var Weeknum map[string]int = map[string]int{"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}

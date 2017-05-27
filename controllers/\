@@ -185,8 +185,6 @@ func QueryTtNum(qudat map[string]string) {
 	kl := CreatSign(qudat["dspkey"], mla)
 	fmt.Println(kl)
 	httpGet(urls)
-
-	//get the data
 }
 
 func httpGet(urls string) {
@@ -209,6 +207,7 @@ func httpGet(urls string) {
 	dda := dat["result"]
 
 	//byte change to utf8
+
 	var hj string = dda.(string)
 	bba := []byte(hj)
 	//TtDecodecode(hj)
@@ -418,3 +417,39 @@ func BbqRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	}
 	fmt.Println(newTest)
 }
+
+func getPlan() {
+	selectMap := make(map[string]interface{})
+	selectMap["address"] = "武汉"
+	selectMap["gender"] = 1
+	selectMap["platform"] = "android"
+	selectMap["yob"] = 0
+	selectMap["connection_type"] = NT_ENUM["NT_4G"]
+	selectMap["operator"] = "China Mobile"
+
+	sql := "select * from tf_plan where "
+	for k, v := range selectMap {
+		ty := reflect.TypeOf(v)
+		nn := ty.Name()
+		switch nn {
+		case "string":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%q,%s)) and ", k, v, k)
+		case "int":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%d,%s)) and ", k, v, k)
+		}
+
+	}
+	sql += "status = 0"
+}
+
+
+var NT_ENUM map[string]int = map[string]int{"Honeycomb": 1, "WIFI": 2, "UNKNOWN": 3, "NT_2G": 4, "NT_4G": 5} //网络编辑
+
+var Weeknum map[string]int = map[string]int{"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+
+
+
+
+
+
+
