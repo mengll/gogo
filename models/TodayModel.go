@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"gopkg.in/mgo.v2"
+
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -114,6 +116,7 @@ func TTquery(bid *BidRequest) {
 
 	//get the plan dat
 	GetPlan(bid)
+	getCastmoney()
 
 }
 
@@ -166,17 +169,42 @@ type Cnotify struct {
 }
 
 //get
-func getCastmoney(planid int, paytype string, money chan int) {
+func getCastmoney() {
 	mongo := GetMongoSession().Copy()
-	var totalMoney int //the cast is fen
+	//	var totalMoney int //the cast is fen
 	defer mongo.Close()
-	//mongo.DB("channel").C("bid_request_dat").Insert(&indat)
-	diter := mongo.DB("channel").C("click_Notify").Find(bson.M("did", planid)).Iter()
-	rea := Cnotify{} //the cast total money
-	for diter.Next(&rea) {
+	//	fmt.Println(planid)
+	//	fmt.Println(totalMoney)
+	//mongo.DB("channel").C("bid_request_dat").Insert(&indat)Z
+	//	diter := mongo.DB("channel").C("click_Notify").Find({})
 
+	//fmt.Println(diter)
+	fmt.Println("=======><<><><<<>><><>---<<<><><")
+	//	rea := Cnotify{} //the cast total money
+	//	for diter.Next(&rea) {
+	//	}
+	//	money <- totalMoney
+
+	job := &mgo.MapReduce{
+		Map:    "function() { emit(this.did,this.bidprce) }",
+		Reduce: "function(key, values) { return Array.sum(values) }",
 	}
-	money <- totalMoney
+	var result []struct {
+		Id    int "_id"
+		Value int
+	}
+
+	_, err := mongo.DB("channel").C("win_Notify").Find(bson.M{"adid": '5'}).MapReduce(job, &result)
+
+	if err != nil {
+		fmt.Println("There had some error")
+	}
+
+	for _, item := range result {
+		fmt.Println(item.Value)
+	}
+
+	fmt.Println("=-=-=-=-=--=-=-=-=-=-=-=-=-=0==-=--=-=-=-=-")
 }
 
 //get the access plan
