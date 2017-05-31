@@ -264,3 +264,37 @@ var USER_GENDER map[string]int = map[string]int{"UNKNOWN": 3, "FEMALE": 1, "MALE
 var NT_ENUM map[string]int = map[string]int{"Honeycomb": 1, "WIFI": 2, "UNKNOWN": 3, "NT_2G": 4, "NT_4G": 5} //网络编辑
 
 var Weeknum map[string]int = map[string]int{"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+
+
+//获取当前的登录信息
+func getQdat(planid string) int {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("there had some error")
+		}
+	}()
+	mongo := GetMongoSession().Copy()
+	defer mongo.Close()
+
+	job := &mgo.MapReduce{
+		Map:    "function() { emit(this.adid,this.bidprce) }",
+		Reduce: "function(key, values) { return Array.sum(values) }",
+	}
+
+	var result []struct {
+		Id    int `bson:"adid"` //广告的ID
+		Value int
+	}
+	_, err := mongo.DB("channel").C("win_Notify").Find(bson.M{"adid": planid}).MapReduce(job, &result)
+
+	if err != nil {
+		fmt.Println("There had some error")
+	}
+	var total int
+	for _, item := range result {
+		total = item.Value
+	}
+	return total
+}
+
+
