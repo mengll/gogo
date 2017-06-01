@@ -42,7 +42,7 @@ func init() {
 	//hja := proto.UnmarshalText(dec.Seatbids, bid)
 
 	//fmt.Println(bid)
-	fmt.Println("<<------>")
+	fmt.Println("<<------>controller")
 	dat, err := ioutil.ReadFile("bit.req")
 	if err != nil {
 		fmt.Println(err)
@@ -57,10 +57,7 @@ func init() {
 	models.TTquery(req)
 	//models.TTinputData(req)
 
-	fmt.Println(req)
-	adts := req.GetAdslots()
-	fmt.Println(adts)
-	fmt.Println("------>")
+	fmt.Println("------>controllers")
 
 	//TuiHead()
 }

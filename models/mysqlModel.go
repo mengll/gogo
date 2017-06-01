@@ -15,7 +15,11 @@ type Mysqldb struct {
 var Mydb Mysqldb
 
 func GetMysqlDb() Mysqldb {
-
+	defer func() {
+		if conerr := recover(); conerr != nil {
+			fmt.Println("mysql connect error!")
+		}
+	}()
 	if Mydb.DB == nil {
 		var err error
 		cont := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8", MysqlConf.User, MysqlConf.PassWord, MysqlConf.Host, MysqlConf.Port, MysqlConf.DataBase)
@@ -24,20 +28,28 @@ func GetMysqlDb() Mysqldb {
 		Mydb.DB.SetMaxIdleConns(2000)
 		Mydb.DB.SetMaxOpenConns(1000)                //设置请求的连接池
 		Mydb.DB.SetConnMaxLifetime(60 * time.Second) // set the life time
+
 		if err != nil {
-			fmt.Errorf("open oracle database failed.", err)
+			fmt.Errorf("open mysql database failed.", err)
 		}
 	}
-
 	return Mydb
 }
 
 //	创建数据库的查询
 
 func (this *Mysqldb) Query(sql_q string, args ...interface{}) ([]map[string]string, bool) {
+	connect := Mydb.DB.Ping()
+	if connect != nil {
+		//panic("mysql connect error")
+		fmt.Errorf("mysql connect %s", "can't connect")
+		fmt.Println("mysql connect error")
+		return []map[string]string{}, false
+	}
+
 	rows, err := this.DB.Query(sql_q, args...)
 	if err != nil {
-		//return "", false
+		return []map[string]string{}, false
 	}
 	columns, err := rows.Columns()
 	if err != nil {
