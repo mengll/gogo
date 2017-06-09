@@ -88,6 +88,15 @@ func saveData(collectionName string, ps url.Values) {
 	models.MongoDb.C("win_Notify").Insert(dat)
 }
 
+//保存到mysql数据库中
+
+func sqlMysqlData(ntp int, ps url.Values) {
+	sql := fmt.Sprintf("insert into tf_notify (`userid`,`requestid`,`adid`,`bidprce`,`ip`,`timestamp`,`did`,`type`)values(%s,%s,%s,%d,%s,%s,%s,%s,%d)", ps.Get("user_id"), ps.Get("request_id"), ps.Get("adid"), Decprice(ps.Get("bid_price")), ps.Get("ip"), ps.Get("timestamp"), ps.Get("did"), ntp)
+	mydb := models.GetMysqlDb()
+	mydb.Insert(sql)
+	fmt.Println(sql)
+}
+
 //获胜后获取的数据github.com/djimenez/iconv-go"
 
 func WinRequest(w http.ResponseWriter, r *http.Request, psa httprouter.Params) {

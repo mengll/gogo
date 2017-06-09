@@ -30,7 +30,6 @@ func GetMongoSession() *mgo.Session {
 		} else {
 			con_str = fmt.Sprintf("%s:%s@%s:%s", MongodbConf.User, MongodbConf.PassWord, MongodbConf.Host, MongodbConf.Port)
 		}
-		fmt.Println("mongodb =", con_str)
 
 		session, err = mgo.Dial(con_str)
 		mgo.DialWithTimeout(con_str, time.Second*60)

@@ -1,0 +1,313 @@
+package models
+
+import (
+	//"dsp/dat/jrtt"
+	"fmt"
+	"reflect"
+	"strconv"
+	"time"
+
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+)
+
+var USER_GENDER map[string]int = map[string]int{"UNKNOWN": 3, "FEMALE": 1, "MALE": 2}
+
+var NT_ENUM map[string]int = map[string]int{"Honeycomb": 1, "WIFI": 2, "UNKNOWN": 3, "NT_2G": 4, "NT_4G": 5} //网络编辑
+
+var Weeknum map[string]int = map[string]int{"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4, "Saturday": 5, "Sunday": 6}
+
+type TTdata struct {
+	ip       string
+	lat      string
+	lon      string
+	city     string
+	deviceId string
+	os       string
+	osv      string
+	yod      string
+	gender   string
+}
+
+type TTnodat struct {
+	data string
+}
+
+const (
+	TF_STYLE_ALL  = 0
+	TF_STYLE_TIME = 1
+)
+
+func TTquery(bid *BidRequest) {
+
+	//	fmt.Println("--<<><><>")
+	//	ads := bid.GetAdslots()
+	//	fmt.Println(ads)
+	//	fmt.Println("<<<--->><")
+
+	//	//get the device
+	//	device := bid.GetDevice()
+	//	device_geo := device.GetGeo()
+	//	city := device_geo.GetCity()
+
+	//	fmt.Println(city)
+	//	fmt.Println(bid.Device.ConnectionType)
+
+	//	db := GetMysqlDb()
+	//	sql := fmt.Sprintf("select * from tf_plan where is_off = 0 and address regexp %q", city)
+	//	fmt.Println(sql)
+	//	dat, _ := db.Query(sql)
+	//	fmt.Println(dat)
+
+	//get the plan dat
+	GetPlan(bid)
+	//get the limit money
+
+}
+
+//input Data
+
+func TTinputData(bid *BidRequest) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("This is the best you config!") // this will be write bidrequest log
+		}
+	}()
+
+	indat := make(map[string]interface{})
+	indat["deviceid"] = bid.Device.DeviceId
+	indat["os"] = bid.Device.Os
+	indat["osv"] = bid.Device.Osv
+	indat["carrier"] = bid.Device.Carrier
+	indat["devicetype"] = bid.Device.DeviceType
+	indat["model"] = bid.Device.Model
+	indat["ip"] = bid.Device.Ip
+	indat["requestid"] = bid.RequestId
+	indat["city"] = bid.Device.Geo.City
+	indat["Country"] = bid.Device.Geo.Country
+	indat["lat"] = bid.Device.Geo.Lat
+	indat["lon"] = bid.Device.Geo.Lon
+	indat["region"] = bid.Device.Geo.Region
+
+	indat["gender"] = bid.User.Gender
+	indat["keywords"] = bid.User.Keywords
+	indat["yob"] = bid.User.Yob
+
+	adslosts := bid.GetAdslots()
+	adsdat := []string{}
+
+	for _, v := range adslosts {
+		adsdat = append(adsdat, v.String())
+	}
+
+	indat["adslots"] = adsdat
+	mongo := GetMongoSession().Copy()
+	defer mongo.Close()
+	mongo.DB("channel").C("bid_request_dat").Insert(&indat)
+
+}
+
+type Cnotify struct {
+	did   uint32
+	money int
+}
+
+//get the access plan
+
+func GetPlan(bid *BidRequest) {
+	if bid == nil {
+		fmt.Println("there is empty for that !")
+		return
+	}
+	selectMap := make(map[string]interface{})
+	lk := bid.GetUser().GetGeo()
+	if lk != nil {
+		selectMap["address"] = lk.String()
+	}
+	ugender := bid.User.GetGender()
+	if ugender.String() != "" {
+		selectMap["gender"] = USER_GENDER[bid.User.Gender.String()]
+	}
+
+	if bid.Device.Os != "" {
+		selectMap["platform"] = bid.Device.Os
+	}
+
+	if bid.User.Yob != "" {
+		selectMap["yob"] = bid.User.Yob
+	}
+	selectMap["connection_type"] = NT_ENUM["NT_4G"]
+	if bid.Device.Carrier != "" {
+		selectMap["operator"] = bid.Device.Carrier
+	}
+
+	sql := "select * from tf_plan where "
+	for k, v := range selectMap {
+		ty := reflect.TypeOf(v)
+		nn := ty.Name()
+		switch nn {
+		case "string":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%q,%s)) and ", k, v, k)
+		case "int":
+			sql += fmt.Sprintf("if(%s=-1,1,FIND_IN_SET(%d,%s)) and ", k, v, k)
+		}
+
+	}
+	jk := time.Now()
+
+	sql += " start_time < " + strconv.FormatInt(jk.Unix(), 10) + " and "
+
+	sql += "status = 0"
+	fmt.Println(sql)
+	db := GetMysqlDb()
+	dat, merr := db.Query(sql)
+	if merr == false {
+		fmt.Println(merr)
+	}
+	fmt.Println(dat)
+
+	//get limit money
+	moneyLimit := make(chan int, 1)
+
+	for _, v := range dat {
+		fmt.Println(v["id"])
+		CheckPlan(v)
+	}
+
+	//out put the data
+	fmt.Println(<-moneyLimit)
+	//fmt.Println(sql)
+
+}
+
+//获取当前的登录信息
+func getQdat(planid string) int {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("there had some error")
+		}
+	}()
+	mongo := GetMongoSession().Copy()
+	defer mongo.Close()
+
+	job := &mgo.MapReduce{
+		Map:    "function() { emit(this.adid,this.bidprce) }",
+		Reduce: "function(key, values) { return Array.sum(values) }",
+	}
+
+	var result []struct {
+		Id    int `bson:"adid"` //广告的ID
+		Value int
+	}
+	_, err := mongo.DB("channel").C("win_Notify").Find(bson.M{"adid": planid}).MapReduce(job, &result)
+
+	if err != nil {
+		fmt.Println("There had some error")
+	}
+	var total int
+	for _, item := range result {
+		total = item.Value
+	}
+	return total
+}
+
+//select order id by plan dat
+
+func CheckPlan(dat map[string]string) {
+
+	//1 检查广告组是否开启 判断当前的是否超过了组的限额
+	dsp_group := dat["group_id"]
+	groupLimit(dsp_group)
+	fmt.Println("this is dsp_group ", dsp_group) //当前的组
+
+	//2 检查投放的时间，是否存在限制
+
+	//3，检查限额的控制
+
+	//4，检查关键词的投放的控制
+
+	limitmoney := dat["account_price"]
+	money, cerr := strconv.ParseFloat(limitmoney, 10) //计划的限额
+	if cerr != nil {
+		fmt.Println("cha")
+	}
+	account_money := money * 100
+	fmt.Println(account_money)
+	//check money
+
+	//check time
+	tf_style, _ := strconv.Atoi(dat["tf_style"])
+
+	//0值的时候是不受时间的限制的 1 收到投放时间字段的限制的影响
+	if tf_style != TF_STYLE_ALL {
+		fmt.Println("tf_toufang all day")
+	}
+	//检查当前的投放的时间的限制
+	fmt.Println(tf_style)
+	//检查当前的广告组的限额的操作
+}
+
+//获取组的限额和时候否超出当前的限额 最后使用通道的方式传递数据
+
+func groupLimit(groupid string) {
+	group_id, _ := strconv.Atoi(groupid)
+	groupSql := fmt.Sprintf("select g.account_price,p.id from tf_ads_group as g inner join tf_plan as p on g.id = p.group_id where g.id = %d and g.status =0 and g.is_off = 0", group_id)
+	//
+	fmt.Println(groupSql)
+	db := GetMysqlDb()
+	dat, _ := db.Query(groupSql)
+	//返回当前的文件
+	if len(dat) > 0 {
+		//返回当前广告组的限额
+		group_money := dat[0]["account_price"]
+		//检查当前是否开启了限额
+		if dat[0]["account_method"] == "0" {
+			//bu shiyong xiane
+			fmt.Println("no group money limit")
+		}
+
+		fmt.Println(group_money)
+		//广告组现在的总金额
+		group_now_money := 0
+		for _, v := range dat {
+			//广告计划的ID
+			m := getQdat(v["id"])
+			group_now_money += m
+		}
+		fmt.Println("This is group :", group_now_money)
+	} else {
+		//当前没有匹配到相关的广告组信息 meiyou uanggaiio
+		fmt.Println("dang")
+	}
+}
+
+//time limit
+
+func timeLimit() {
+	//
+        	var jj [][]string
+			json.Unmarshal([]byte(selecTime), &jj)
+				fmt.Println(jj)
+
+					nowt := time.Now()
+
+						unixtime := nowt.Unix() //获取当前的时间戳
+
+							fmt.Println(unixtime)
+
+								dl := nowt.Weekday().String()
+									daytime := Weeknum[dl]
+										fmt.Println(jj[daytime][1])
+
+											htime := nowt.Hour()                 //获取当前时
+												mintime := nowt.Minute()             //获取当前的分钟
+													skip := mintime / 30                 //当前的时偏移量
+														hanftindex := htime*2 + skip         //半小时索引
+															fmt.Println(jj[daytime][hanftindex]) //获取当前是否投放广告
+
+																lp := reflect.TypeOf(jj[daytime][hanftindex])
+																	fmt.Println(lp.Name())
+																		fmt.Println(hanftindex) //当前的acci
+
+}
