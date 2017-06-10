@@ -127,14 +127,12 @@ type BBQ struct {
 	Bid *BidRequest
 }
 
-func GetPlan(bid *BidRequest) {
+func GetPlan(bid *BidRequest) []byte {
 	if bid == nil {
-		fmt.Println("there is empty for that !")
-		return
+		return []byte{}
 	}
 	selectMap := make(map[string]interface{})
 	lk := bid.GetDevice().Geo.City
-	fmt.Println("city", lk)
 	if lk != "" {
 		selectMap["address"] = lk
 	}
@@ -172,20 +170,17 @@ func GetPlan(bid *BidRequest) {
 	sql += " start_time < " + strconv.FormatInt(jk.Unix(), 10) + " and "
 
 	sql += "status = 0"
-	fmt.Println("select_plan_sql=>", sql)
+
 	db := GetMysqlDb()
 	dat, merr := db.Query(sql)
 	if merr == false {
-		fmt.Println(merr)
+		//fmt.Println(merr)
 	}
 	//fmt.Println(dat)
 	//get limit money
 	//moneyLimit := make(chan int, 1)
 	Planids = make(chan int, len(dat))
 	pans := []string{}
-
-	//数据长度
-	fmt.Println("data length=>", len(dat))
 
 	for _, v := range dat { //遍历当前的广告计划，查询是否满足当前的需求
 
@@ -201,12 +196,13 @@ func GetPlan(bid *BidRequest) {
 		pids = append(pids, <-Planids)
 	}
 	//ads_id := []string{"10", "11"}
-	bid.Chuangyi(pans)
+	lks := bid.Chuangyi(pans)
+	return lks
 
 	//查询当前的广告创意广告创意的ID的实现
 	//out put the data
 	//fmt.Println(sql)
-	bid.BbqRequest()
+	//	bid.BbqRequest()
 }
 
 //获取当前的登录信息
@@ -248,9 +244,8 @@ func CheckPlan(dat map[string]string, bid *BidRequest) {
 	//1 检查广告组是否开启 判断当前的是否超过了组的限额
 	dsp_group := dat["group_id"]
 	go groupLimit(dsp_group, padt) //只判断是否满足条件
-	//fmt.Println("this is dsp_group ", dsp_group) //当前的组
+
 	//2 检查投放的时间，是否存在限制
-	fmt.Println("时间控制的测试")
 	go timeLimit(padt, dat) //检查是否满足投放的需求
 
 	//3广告计划的预算的控制方式
@@ -261,11 +256,11 @@ func CheckPlan(dat map[string]string, bid *BidRequest) {
 	//4，检查关键词的投放的控制
 	select {
 	case <-time.After(time.Second * 3):
-		fmt.Println("This is the file you can see in 90") //投放刚超时
+		//	fmt.Println("This is the file you can see in 90") //投放刚超时
 		break
 	case <-padt:
 		Planids <- 1 //
-		fmt.Println("This is ok the config!")
+
 	}
 }
 
@@ -274,15 +269,12 @@ func CheckPlan(dat map[string]string, bid *BidRequest) {
 func groupLimit(groupid string, bb chan bool) {
 	group_id, _ := strconv.Atoi(groupid)
 	groupSql := fmt.Sprintf("select g.account_price,p.id ,g.account_method from tf_ads_group as g inner join tf_plan as p on g.id = p.group_id where g.id = %d and g.status =0 and g.is_off = 0", group_id)
-	fmt.Println("查询相关额度组", groupSql)
 	db := GetMysqlDb()
 	dat, _ := db.Query(groupSql)
 	//返回当前的文件
 	if len(dat) > 0 {
 		//返回当前广告组的限额
 		group_money := dat[0]["account_price"]
-		fmt.Println(group_money)
-		fmt.Println("account_method=>", dat[0]["account_method"])
 		//检查当前是否开启了限额
 		if dat[0]["account_method"] == "1" {
 			//广告组现在的总金额
@@ -356,7 +348,7 @@ func timeLimit(bbq chan bool, dat map[string]string) {
 		//时间点的判断
 		if JK == false {
 			//时间检测未能通过
-			fmt.Println("This is error!")
+			//fmt.Println("This is error!")
 		}
 	}
 }
@@ -368,11 +360,11 @@ func Stlimit(selecTime string) bool {
 	nowt := time.Now()
 	dl := nowt.Weekday().String()
 	daytime := Weeknum[dl]
-	htime := nowt.Hour()                             //获取当前时
-	mintime := nowt.Minute()                         //获取当前的分钟
-	skip := mintime / 30                             //当前的时偏移量
-	hanftindex := htime*2 + skip                     //半小时索引
-	fmt.Println("是否处于投放时间", jj[daytime][hanftindex]) //获取当前是否投放广告 tf_style 投放的方式全天
+	htime := nowt.Hour()         //获取当前时
+	mintime := nowt.Minute()     //获取当前的分钟
+	skip := mintime / 30         //当前的时偏移量
+	hanftindex := htime*2 + skip //半小时索引
+	//fmt.Println("是否处于投放时间", jj[daytime][hanftindex]) //获取当前是否投放广告 tf_style 投放的方式全天
 	//当前的如果不满组条件的时候创建一个新的文件
 	//	tp, _ := strconv.Atoi( jj[daytime][hanftindex]))
 	//检查当前的投放是不是全天的投放的模式
@@ -408,131 +400,148 @@ func getTimemoney(dat map[string]string, tp int, bbq chan bool) {
 		for itler.Next(&result) {
 			LimitMoney += result.Bidprce
 		}
-		fmt.Println("Total 总金额", LimitMoney)
 
 	} else {
 		LimitMoney = getQdat(plstr)
-		fmt.Println(LimitMoney)
 	}
 
 	limitmoneyOne := dat["account_price"]
 	money, cerr := strconv.ParseFloat(limitmoneyOne, 10) //计划的限额
 	if cerr != nil {
-		fmt.Println("cha")
+		return
 	}
 	account_money := money * 100
-	fmt.Println(account_money)
+
 	t := strconv.FormatFloat(account_money, 'f', 0, 64)
 	tlimi, _ := strconv.Atoi(t)
 
-	fmt.Println("moneyLimit=->", LimitMoney)
 	if tlimi < LimitMoney {
 		//超过了
-		fmt.Println("超过===》那就是失败")
+
 		bbq <- true
 	}
 }
 
 //查满足条件的广告创意
 
-func (bid *BidRequest) Chuangyi(pids []string) {
-	fmt.Println("This is chuangyi func !")
+func (bid *BidRequest) Chuangyi(pids []string) []byte {
+
 	pidst := strings.Join(pids, ",")
-	fmt.Println("广告创意的组合====》", pidst)
-	sql := fmt.Sprintf("select s.* from tf_plan as p inner join tf_ads as s on p.id = s.plan_id where p.id in(%s) and p.is_off = 0 and s.is_off = 0 ", pidst)
-	fmt.Println("创意sql =", sql)
+
+	sql := fmt.Sprintf("select p.first_price,s.* from tf_plan as p inner join tf_ads as s on p.id = s.plan_id where p.id in(%s) and p.is_off = 0 and s.is_off = 0 ", pidst)
+
 	mydb := GetMysqlDb()
 	dat, isdat := mydb.Query(sql)
 
-	if isdat {
+	if isdat == false {
 		//当前的时间限制的
-		fmt.Println("查询出错了。。。", dat)
-	}
-	//遍历当前的广告创意
-	for _, dv := range dat {
-		fmt.Println("用户中心==》", dv)
-		//获取当前的投放的位置
-		ad_type := dv["ad_type"]
-
-		type_s := strings.Split(ad_type, ",")
-
 	}
 
-	//请求的广告创意
+	//满足条件的创意的合
+	var Ads_Array []map[string]string
+
 	adsNum := bid.GetAdslots()
 	for _, ads := range adsNum {
-		cc := []int32{}
 		for _, vm := range ads.AdType {
 			kv := vm.String()
-			fmt.Println(vm)
 			knum := AdType_value[kv]
-			//	vl := AdType_value[v]
-			fmt.Println(knum) //当前的广告位置
-			cc = append(cc, knum)
+			for _, vv := range dat {
+				//广告创意
+				ch_type := vv["ad_type"]
+				ad_type_arr := strings.Split(ch_type, ",")
+				for _, tv := range ad_type_arr {
+					tv_num, _ := strconv.Atoi(tv)
+					if tv_num == int(knum) {
+
+						Ads_Array = append(Ads_Array, vv)
+					}
+				}
+			}
+
 		}
-		//获取当前广告位的大小
-		//获取当前的他又放的
-		fmt.Println(cc)
 	}
 	//查询满足条件的创意信息
-
-	fmt.Println("This is a gob ")
-	fmt.Println(sql)
+	bydat := bid.BbqRequest(Ads_Array)
+	return bydat
 }
 
-func (bid *BidRequest) BbqRequest() []byte {
+func (bid *BidRequest) BbqRequest(dat []map[string]string) []byte {
+
+	if len(dat) == 0 {
+		mk := []byte{}
+		return mk
+	}
+
 	var domain string = "http://jrtt.qcwanwan.com"
 	var param string = "notify?user_id={user_id}&request_id={request_id}&adid={adid}&bid_price={bid_price}&ip={ip}&timestamp={timestamp}&did={did}"
+	var imgdom string = "http://dsp.anfan.com"
+	//保存文档的内容
+	var Arr_Seats []*SeatBid
+	for _, ads := range dat {
 
-	//响应的对象的数据
-	rback := rand.New(rand.NewSource(time.Now().UnixNano()))
+		meta_sql := fmt.Sprintf("select * from tf_images where ads_id = %s  and status = 'normal'", ads["id"])
 
-	adslots := bid.GetAdslots()[0] //获取最上曾数据
-	biddata := &Bid{}
-	biddata.Id = strconv.Itoa(rback.Intn(20)) //生成唯一的商品的信息
-	biddata.Adid = uint64(rback.Intn(18))     //参与竞价的广告ID
-	biddata.Price = adslots.BidFloor + 1
-	biddata.AdslotId = adslots.Id
-	biddata.Cid = strconv.Itoa(rback.Intn(18)) //扩展的广告ID
+		mydb := GetMysqlDb()
+		mdat, _ := mydb.Query(meta_sql)
+		mitem := mdat[0]
 
-	modelste := &MaterialMeta{} //广告素材对象
-	modelste.AdType = AdType_TOUTIAO_FEED_LP_GROUP
-	modelste.Nurl = fmt.Sprintf("%s/%s/%s", domain, "win", param)
-	modelste.Title = "白野猪爆了个装备.换了小半个月工资NB"
-	modelste.Source = "传奇无双"
+		//检查当前的图片的类型 小图 组图大图
+		//响应的对象的数据
+		rback := rand.New(rand.NewSource(time.Now().UnixNano()))
+		adslots := bid.GetAdslots()[0] //获取最上曾数据
+		biddata := &Bid{}
+		biddata.Id = strconv.Itoa(rback.Intn(20)) //生成唯一的商品的信息
+		//创意的ID
+		cid, _ := strconv.ParseUint(ads["id"], 10, 64)
 
-	//banner的图片信息显示
-	imgbanner := &MaterialMeta_ImageMeta{}
-	imgbanner.Width = 228
-	imgbanner.Height = 150
-	imgbanner.Url = "http://jrtt.qcwanwan.com/1.jpg"
-	imgbanner.Urls = []string{"http://jrtt.qcwanwan.com/1.jpg",
-		"http://jrtt.qcwanwan.com/2.jpg",
-		"http://jrtt.qcwanwan.com/3.jpg"}
-	modelste.ImageBanner = imgbanner
+		biddata.Adid = cid //参与竞价的广告ID
+		biddata.Price = adslots.BidFloor + 1
+		biddata.AdslotId = adslots.Id
+		biddata.Cid = strconv.Itoa(rback.Intn(18)) //扩展的广告ID
 
-	//设置当前的操作流程
-	dsp_external := &MaterialMeta_ExternalMeta{}
-	dsp_external.Url = "http://m.anfeng.cn/cqws_bbk-ios/12/"
-	modelste.External = dsp_external
-	biddata.Creative = modelste
+		modelste := &MaterialMeta{} //广告素材对象
+		modelste.AdType = AdType_TOUTIAO_FEED_LP_GROUP
+		modelste.Nurl = fmt.Sprintf("%s/%s/%s", domain, "win", param)
+		modelste.Title = mitem["title"]
+		modelste.Source = mitem["source"]
 
-	modelste.ShowUrl = []string{fmt.Sprintf("%s/%s/%s", domain, "show", param)}
-	modelste.ClickUrl = []string{fmt.Sprintf("%s/%s/%s", domain, "click", param)}
+		//banner的图片信息显示
+		imgbanner := &MaterialMeta_ImageMeta{}
+		wnum, _ := strconv.Atoi(mitem["width"])
+		hnum, _ := strconv.Atoi(mitem["height"])
+		imgbanner.Width = uint32(wnum)
+		imgbanner.Height = uint32(hnum)
 
-	dsp := &SeatBid{}
-	dsp.Ads = []*Bid{biddata}
+		if mitem["type"] != "3" {
+			imgbanner.Url = fmt.Sprintf("%s%s", imgdom, mitem["img_url"])
+			imgbanner.Urls = []string{fmt.Sprintf("%s%s", imgdom, mitem["img_url"])}
+		} else {
+			var imgsA []string
+			json.Unmarshal([]byte(mitem["img_url"]), imgsA)
+		}
+		modelste.ImageBanner = imgbanner
+		//设置当前的操作流程
+		dsp_external := &MaterialMeta_ExternalMeta{}
+		dsp_external.Url = "http://m.anfeng.cn/cqws_bbk-ios/12/"
+		modelste.External = dsp_external
+		biddata.Creative = modelste
+
+		modelste.ShowUrl = []string{fmt.Sprintf("%s/%s/%s", domain, "show", param)}
+		modelste.ClickUrl = []string{fmt.Sprintf("%s/%s/%s", domain, "click", param)}
+
+		dsp := &SeatBid{}
+		dsp.Ads = []*Bid{biddata}
+		Arr_Seats = append(Arr_Seats, dsp) //生成的新的广告创意
+	}
 
 	res := &BidResponse{}
-	res.Seatbids = []*SeatBid{dsp}
+	res.Seatbids = Arr_Seats
 	res.RequestId = bid.RequestId
-
 	data, err := proto.Marshal(res)
 
 	newTest := &BidResponse{}
 	err = proto.Unmarshal(data, newTest)
 	if err != nil {
-		fmt.Println("----->>>")
 	}
 	return data
 }

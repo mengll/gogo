@@ -372,6 +372,36 @@ func BbqRequest(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		fmt.Println("转化错误iiiii")
 		panic("解析错误")
 	}
+	data := models.GetPlan(reqa)
+	w.Write(data)
+
+	newTest := &models.BidResponse{}
+	err := proto.Unmarshal(data, newTest)
+	if err != nil {
+		fmt.Println("----->>>")
+	}
+	fmt.Println(newTest)
+}
+
+func BbqRequestold(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("出错了")
+		}
+
+	}()
+
+	httputil.DumpRequest(r, true)
+
+	bydata, _ := ioutil.ReadAll(r.Body)
+
+	reqa := &models.BidRequest{}
+	era := proto.Unmarshal(bydata, reqa)
+	if era != nil {
+		fmt.Println("转化错误iiiii")
+		panic("解析错误")
+	}
 
 	//响应的对象的数据
 	rback := rand.New(rand.NewSource(time.Now().UnixNano()))

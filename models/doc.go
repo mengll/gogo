@@ -73,7 +73,7 @@ func initDatabase() {
 		}
 	}()
 	path := getCurrentDirectory()
-	fmt.Println("models doc initDatabase 配置初始化")
+
 	//获取当前文件的配置
 	dat, err := ioutil.ReadFile(path + "/config/config.json")
 
@@ -84,7 +84,6 @@ func initDatabase() {
 	}
 
 	dt := DataChange(string(dat))
-	fmt.Println(dt["mysql"])
 	//mysql
 	dta := dt["mysql"]
 	dap := DataChange(JsonEncodeString(dta))
