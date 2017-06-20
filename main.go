@@ -1,24 +1,28 @@
-// dsp project main.go
+// Tdsp project main.go
 package main
 
 import (
+	"Tdsp/controllers"
+
 	"net/http"
-
-	"dsp/controllers"
-
 	"runtime"
 
 	"github.com/julienschmidt/httprouter"
 )
 
-func main() {
+func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU()) //开启多核
-	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static")))) //设置静态资源的访问路径
-	router := httprouter.New()
-	router.GET("/", controllers.Index) //
 
-	router.POST("/bit/req", controllers.RequestToday)
+}
+
+func main() {
+	router := httprouter.New()
+	router.GET("/index", controllers.Index)
+	router.POST("/bit/req", controllers.TodayBidRequest)
 	router.GET("/win/notify", controllers.WinRequest)
+	router.GET("/click/notify", controllers.ClickRequest)
+	router.GET("/show/notify", controllers.ShowRequest)
 
 	http.ListenAndServe(":9090", router)
+
 }

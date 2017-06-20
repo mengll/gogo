@@ -1,0 +1,8 @@
+1.获胜后的 请求的参数
+	/win/notify?user_id=41341711578&request_id=20170516200617010004048073600BEC&adid=113139168172501817&bid_price=WRrrOgAKUDJZGus6AApQMjrfrCFRHwiH5SvcYg&ip=&timestamp=1494936378&did=861451039768687
+2 请求展示的参数的显示
+	/show/notify?user_id=41341711578&request_id=20170516200617010004048073600BEC&adid=113139168172501817&bid_price=WRrrWQAH2_dZGutZAAfb90-2vVidGSVd8lYAzg&ip=113.57.246.105&timestamp=1494936378&did=861451039768687
+3 广告点击的是偶请求的参数
+	
+
+
